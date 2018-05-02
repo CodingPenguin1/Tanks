@@ -9,6 +9,7 @@
 import pygame
 import math
 import time
+import sys
 import os.path
 import platform
 import random as rand
@@ -446,9 +447,8 @@ class player:
         for i in players:
             print('Player id ' + str(i.idnum))
         print('Turn: ' + str(turn))
-        turn += 1
         if turn >= len(players):
-            turn = 0
+            turn = -1
         print('Updated turn: ' + str(turn))
         drawTerrain()
         drawTanks(players)
@@ -930,7 +930,9 @@ def gameLoop():
             break
 
         turn += 1
-        if turn == len(players):
+        if turn >= len(players):
+            turn = 0
+        elif turn < 0:
             turn = 0
 
     gameOverScreen(players[0])
@@ -1000,7 +1002,7 @@ def play(dw=1080, dh=720):
     mapHeight = displayHeight-50
     pause = False
     gravity = 9.8
-    wind = -15
+    wind = 0
     gameDisplay = pygame.display.set_mode((displayWidth, displayHeight))
     pygame.display.set_caption('Tanks')
     clock = pygame.time.Clock()
@@ -1013,6 +1015,13 @@ def TankGame():
     global buttonTextSize
     titleTextSize = 115
     buttonTextSize = 30
+    print('CWD: ' + os.getcwd())
+    print('This File: ' + os.path.dirname(sys.argv[0]))
+    if operatingSystem == 'Windows':
+        print('Windows detected, changing CWD')
+        os.chdir(os.path.dirname(sys.argv[0]))
+        print('CWD: ' + os.getcwd())
+    print()
     play()
 
 if __name__ == '__main__':
