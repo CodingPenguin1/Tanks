@@ -879,23 +879,23 @@ def gameLoop():
                         powerChange = -1
 
                     # Change Weapons
-                    elif event.key == pygame.K_1:
+                    elif event.key == pygame.K_1 or event.key == pygame.K_KP1:
                         players[turn].updateCurrentSelectedWeaponNumberKeys(1)
-                    elif event.key == pygame.K_2:
+                    elif event.key == pygame.K_2 or event.key == pygame.K_KP1:
                         players[turn].updateCurrentSelectedWeaponNumberKeys(2)
-                    elif event.key == pygame.K_3:
+                    elif event.key == pygame.K_3 or event.key == pygame.K_KP3:
                         players[turn].updateCurrentSelectedWeaponNumberKeys(3)
-                    elif event.key == pygame.K_4:
+                    elif event.key == pygame.K_4 or event.key == pygame.K_KP4:
                         players[turn].updateCurrentSelectedWeaponNumberKeys(4)
-                    elif event.key == pygame.K_5:
+                    elif event.key == pygame.K_5 or event.key == pygame.K_KP5:
                         players[turn].updateCurrentSelectedWeaponNumberKeys(5)
-                    elif event.key == pygame.K_6:
+                    elif event.key == pygame.K_6 or event.key == pygame.K_KP6:
                         players[turn].updateCurrentSelectedWeaponNumberKeys(6)
-                    elif event.key == pygame.K_7:
+                    elif event.key == pygame.K_7 or event.key == pygame.K_KP7:
                         players[turn].updateCurrentSelectedWeaponNumberKeys(7)
-                    elif event.key == pygame.K_8:
+                    elif event.key == pygame.K_8 or event.key == pygame.K_KP8:
                         players[turn].updateCurrentSelectedWeaponNumberKeys(8)
-                    elif event.key == pygame.K_9:
+                    elif event.key == pygame.K_9 or event.key == pygame.K_KP9:
                         players[turn].updateCurrentSelectedWeaponNumberKeys(9)
 
                     # Move Tank
@@ -905,7 +905,7 @@ def gameLoop():
                         pass
 
                     # Shoot
-                    elif event.key == pygame.K_SPACE or event.key == pygame.K_RETURN:
+                    elif event.key == pygame.K_SPACE or event.key == pygame.K_RETURN or event.key == pygame.K_KP_ENTER:
                         players[turn].shoot()
                         drawTanks(players)
                         endTurn = True
