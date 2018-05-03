@@ -12,6 +12,7 @@ import time
 import sys
 import os.path
 import platform
+import updateTerrain
 import random as rand
 import numpy as np
 import pygame.locals as pl
@@ -160,7 +161,7 @@ class TextInput:
         self.font_size = font_size
         self.input_string = "" # Inputted text
         if not os.path.isfile(font_family): font_family = pygame.font.match_font(font_family)
-        self.font_object = pygame.font.Font(font_family, font_size)
+        self.font_object = pygame.font.SysFont('couriernew', font_size)
 
         # Text-surface will be created during the first update call:
         self.surface = pygame.Surface((1, 1))
@@ -305,7 +306,7 @@ def paused():
         button('MAIN MENU', int((displayWidth/2)+(5/640)*displayWidth), int((3/4)*displayHeight), int((13/64)*displayWidth), int((5/48)*displayHeight), colors.RED, colors.BRIGHTRED, play)
         button('CONTINUE', int(displayWidth/2-(125/640)*displayWidth), int((3/4)*displayHeight), int((12/64)*displayWidth), int((5/48)*displayHeight), colors.GREEN, colors.BRIGHTGREEN, unpause)
         pygame.display.update()
-        clock.tick(30)
+        clock.tick(60)
 
 def quitGame():
     pygame.quit()
@@ -345,13 +346,13 @@ class player:
             self.tankImage = pygame.image.load('tanks\\' + self.color + 'tank.png')
         else:
             self.tankImage = pygame.image.load('tanks/' + self.color + 'tank.png')
-        self.weapons = [weapon('standard', 0)]
+        self.weapons = [weapon('standard', 0), weapon('highexplosive', 2)]
 
         # Weapon ideas:
 
         # EASY:
-        # Standard: r=10, moderate damage, moderate dropoff
-        # HE: r = 20, high damage, fast dropoff
+        # --Standard: r=10, moderate damage, moderate dropoff--
+        # --HE: r = 20, high damage, fast dropoff--
         # Tunneler: standard shot but less damage, same physics, doesn't stop if hit terrain
         # Flamethrower: low damage, but add burn effect, low range, random duration (1-5 turns?)
         # shot with no wind effect. tmpWind = wind, wind = 0, calc as normal, reset wind = tmpWind
@@ -382,9 +383,9 @@ class player:
         self.tankLoc = loc
 
     def shoot(self):
-        # return boolean hit terrain/tank or miss
-        # if hit, gravityUpdate()
+        print('\n' + self.name + ' shooting')
         self.currentWeapon.shoot(self.power, math.radians(-1*(self.barrelAngle-90)), self.tankLoc)
+        self.currentWeapon.resetCooldown()
 
     def moveBarrel(self, amount):
         self.barrelAngle += amount
@@ -407,8 +408,8 @@ class player:
         else:
             self.currentWeapon = self.weapons[currentSelection]
 
-    def updateCurrentSelectedWeaponNumberKeys(self, number):
-        if number > 0 and number <= len(self.weapons):
+    def updateCurrentSelectedWeapon(self, number):
+        if number > 0 and number <= len(self.weapons) and self.weapons[number-1].isReady():
             self.currentWeapon = self.weapons[number-1]
 
     def changePower(self, amount):
@@ -457,7 +458,7 @@ class weapon:
     def __init__(self, name, cooldownTime):
         self.name = name
         self.cooldownTime = cooldownTime
-        self.timeUntilAvailable = 0
+        self.timeUntilAvailable = cooldownTime
         self.shell = Shell(self.name)
         weaponsDir = 'weapons/'
         if operatingSystem == 'Windows':
@@ -467,6 +468,19 @@ class weapon:
     def shoot(self, power, angle, initialLocation):
         hit = self.shell.shoot(power, angle, (initialLocation[0]+25, initialLocation[1]+7))
         return hit
+
+    def cool(self):
+        self.timeUntilAvailable -= 1
+        if self.timeUntilAvailable < 0:
+            self.timeUntilAvailable = 0
+
+    def resetCooldown(self):
+        self.timeUntilAvailable = self.cooldownTime + 1
+
+    def isReady(self):
+        if self.timeUntilAvailable == 0:
+            return True
+        return False
 
 class Shell:
     def __init__(self, ammoType):
@@ -478,11 +492,15 @@ class Shell:
     def defineExplosionParameters(self):
         if self.ammoType == 'standard':
             return (10, 10)
+        elif self.ammoType == 'highexplosive':
+            return (30, 30)
         return (0, 0)
 
     def getDamage(self, distance):
         if self.ammoType == 'standard':
             return 10
+        elif self.ammoType == 'highexplosive':
+            return (-1/45)*distance**2 + 20
 
     def shoot(self, power, angle, initialLoc):
         hit = False
@@ -519,7 +537,6 @@ class Shell:
                 xNoWind.pop(0)
             else:
                 break
-        print()
 
         displayInterval = 2
         i = displayInterval
@@ -527,7 +544,7 @@ class Shell:
         while self.xLocation+x[i] > 0 and self.xLocation+x[i] < 1080 and self.yLocation-y[i] < 670:
             if i > len(x)-1 or i > len(y)-1:
                 break
-            if terrain[self.yLocation-y[i]-1][self.xLocation+x[i]-1] != 0:
+            if terrain[self.yLocation-y[i]-1][self.xLocation+x[i]-1] != 0 and self.yLocation-y[i] > 0:
                 hit = True
                 break
             pygame.draw.rect(gameDisplay, colors.BLACK, (self.xLocation+x[i]-1, self.yLocation-y[i]-1, 3, 3))
@@ -541,11 +558,14 @@ class Shell:
                 break
 
         if hit:
+            print('Hit at (' + str(currentLoc[0]) + ', ' + str(currentLoc[1]) + ')')
             pygame.draw.rect(gameDisplay, colors.SKY, (currentLoc[0], currentLoc[1], 3, 3))
             self.explode(currentLoc)
+            print('Gravity update')
+            gravityUpdate()
             print('Redrawing terrain')
             drawTanks(players)
-            drawTerrain(currentLoc[0]-self.terrainExplosionRadius-1, currentLoc[0]+self.terrainExplosionRadius+1, False)
+            drawTerrain(currentLoc[0]-self.terrainExplosionRadius-55, currentLoc[0]+self.terrainExplosionRadius+55)
             drawTanks(players)
         else:
             pygame.draw.rect(gameDisplay, colors.SKY, (currentLoc[0], currentLoc[1], 3, 3))
@@ -562,6 +582,7 @@ class Shell:
         pygame.display.update()
         time.sleep(0.25)
         pygame.draw.circle(gameDisplay, colors.SKY, location, self.terrainExplosionRadius)
+        drawControlBoard(players[turn])
         pygame.display.update()
         drawTanks(players)
 
@@ -569,15 +590,19 @@ class Shell:
         hitTankIds = []
         tanksHit = []
         damage = []
-        for col in range(location[0]-self.terrainExplosionRadius-2, location[0]+self.terrainExplosionRadius+2):
-            for row in range(location[1]-self.terrainExplosionRadius-2, location[1]+self.terrainExplosionRadius+2):
+        for col in range(location[0]-self.tankDamageRadius-2, location[0]+self.tankDamageRadius+2):
+            for row in range(location[1]-self.tankDamageRadius-2, location[1]+self.tankDamageRadius+2):
                 if col >= 0 and col < 1080 and row >= 0 and row < mapHeight:
                     if terrain[row][col] > 0 and terrain[row][col] not in hitTankIds:
                         for i in players:
                             if i.idnum == terrain[row][col]:
                                 hitTankIds.append(terrain[row][col])
                                 tanksHit.append(i)
-                                damage.append(self.getDamage(math.sqrt( (col-(i.tankLoc[0]+25))**2 + (row-i.tankLoc[1]+17)**2 )))
+                                distance = math.sqrt( (col-(i.tankLoc[0]+25))**2 + (row-i.tankLoc[1]+17)**2 ) - 0.5*self.tankDamageRadius
+                                if distance < 0:
+                                    distance = 0
+                                print('Hit at distance: ' + str(distance))
+                                damage.append(self.getDamage(distance))
 
         for i in range(len(tanksHit)):
             tanksHit[i].updateHealth(-1*damage[i])
@@ -612,21 +637,45 @@ class Status:
 #==============================================================================
 
 def gravityUpdate():
-    def updateTerrain():
-        # If terrain floating, drop it
-        pass
-    def updateTanks():
-        pass
+    def setTank(player, x):
+        maxy = mapHeight
+        for col in range(x+9, x+43):
+            for row in range(maxy):
+                if terrain[row][col] == -1:
+                    maxy = row
+                    break
+        tankLoc = (x, maxy-34)
+        player.updateTankLoc((tankLoc[0]+25, tankLoc[1]+17))
 
-    updateTerrain()
-    updateTanks()
+        # Add to terrain array
+        for col in range(x, x+50):
+            for row in range(maxy-34, maxy):
+                if row >= 0  and row < 670 and col >= 0 and col < 1080:
+                    if terrain[row][col] == 0:
+                        terrain[row][col] = player.idnum
+
+        return tankLoc
+
+    # Update Terrain
+    global terrain
+
+    print('Updating terrain')
+    terrain = updateTerrain.update(terrain)
+    for col in range(displayWidth):
+        terrain[mapHeight-1][col] = -1
+        terrain[mapHeight-2][col] = -1
+
+    # Update Tanks
+    print('Updating tanks')
+    for player in players:
+        player.tankLoc = setTank(player, player.tankLoc[0])
 
 def drawTanks(tanks):
     def drawTank(player):
         gameDisplay.blit(player.tankImage, player.tankLoc)
 
         # Display player name above tank
-        text = pygame.font.SysFont('comicsansms', 12)
+        text = pygame.font.SysFont('couriernew', 12)
         TextSurf, TextRect = text_objects(player.name, text, player.RGBColor)
         TextRect.center = (player.tankLoc[0]+25, player.tankLoc[1] - 20)
         gameDisplay.blit(TextSurf, TextRect)
@@ -660,7 +709,7 @@ def setTanks(tanks):
                         terrain[row][col] = player.idnum
 
         # Display player name above tank
-        text = pygame.font.SysFont('comicsansms', 12)
+        text = pygame.font.SysFont('couriernew', 12)
         TextSurf, TextRect = text_objects(player.name, text, player.RGBColor)
         TextRect.center = (tankLoc[0]+25, tankLoc[1] - 20)
         gameDisplay.blit(TextSurf, TextRect)
@@ -677,20 +726,6 @@ def setTanks(tanks):
     for player in tanks:
         player.tankLoc = setTank(player, (zoneNumber*homeZoneWidth+50, (zoneNumber+1)*homeZoneWidth-50))
         zoneNumber += 1
-
-#    print('Writing terrain file')
-#    terrainFile = open('terrain', 'w')
-#    for row in range(670):
-#        for col in range(1080):
-#            if terrain[row][col] == -1:
-#                terrainFile.write('X')
-#            elif terrain[row][col] == 0:
-#                terrainFile.write(' ')
-#            else:
-#                terrainFile.write(str(terrain[row][col]))
-#        terrainFile.write('\n')
-#    terrainFile.close()
-
     pygame.display.update()
 
 def createInitialTerrain():
@@ -722,11 +757,18 @@ def createInitialTerrain():
         for row in range(top, mapHeight):
             terrain[row][col] = -1
 
-def drawTerrain(xstart=0, xstop=1080, drawSky=True):
-#    bg = pygame.image.load('sky.jpg')
-#    gameDisplay.blit(bg, (0, 0))
-    if drawSky:
-        gameDisplay.fill(colors.SKY)
+def drawTerrain(xstart=0, xstop=1080):
+    global terrain
+    if xstart < 0:
+        xstart = 0
+    elif xstart > 1079:
+        xstart = 1079
+    if xstop < 1:
+        xstop = 1
+    elif xstop > 1080:
+        xstop = 1080
+    for col in range(xstart, xstop):
+        pygame.draw.rect(gameDisplay, colors.SKY, (col, 0, 1, mapHeight))
     pygame.draw.rect(gameDisplay, colors.CONTROLBOARDBACKGROUND, (0, mapHeight, displayWidth, displayHeight))
     for col in range(xstart, xstop):
         for row in range(mapHeight):
@@ -735,21 +777,21 @@ def drawTerrain(xstart=0, xstop=1080, drawSky=True):
 
 def drawControlBoard(player):
     pygame.draw.rect(gameDisplay, colors.CONTROLBOARDBACKGROUND, (0, mapHeight, displayWidth, displayHeight))
-    text = pygame.font.SysFont('comicsansms', 30)
+    text = pygame.font.SysFont('couriernew', 30)
 
     # Player Name
     TextSurf, TextRect = text_objects(player.name, text, player.RGBColor)
-    TextRect.center = (60, 695)
+    TextRect.center = (80, 695)
     gameDisplay.blit(TextSurf, TextRect)
 
     # Wind
-    TextSurf, TextRect = text_objects('Wind: ' + str(wind), pygame.font.SysFont('comicsansms', 15), colors.BLACK)
-    TextRect.center = (200, 685)
+    TextSurf, TextRect = text_objects('Wind: ' + str(wind), pygame.font.SysFont('couriernew', 15), colors.BLACK)
+    TextRect.center = (220, 685)
     gameDisplay.blit(TextSurf, TextRect)
 
     # Gravity
-    TextSurf, TextRect = text_objects('Gravity: ' + str(gravity), pygame.font.SysFont('comicsansms', 15), colors.BLACK)
-    TextRect.center = (200, 705)
+    TextSurf, TextRect = text_objects('Gravity: ' + str(gravity), pygame.font.SysFont('couriernew', 15), colors.BLACK)
+    TextRect.center = (220, 705)
     gameDisplay.blit(TextSurf, TextRect)
 
     # Barrel Angle
@@ -773,6 +815,9 @@ def drawControlBoard(player):
 
     for i in range(len(player.weapons)):
         gameDisplay.blit(player.weapons[i].image, (630+i*45, 675))
+        TextSurf, TextRect = text_objects(str(player.weapons[i].timeUntilAvailable), text, player.RGBColor)
+        TextRect.center = (652+i*45, 650)
+        gameDisplay.blit(TextSurf, TextRect)
 
     currentSelection = 0
     for i in range(len(player.weapons)):
@@ -819,7 +864,7 @@ def gameLoop():
     # TODO: Add Teams!!!!!
     while True:
         gameDisplay.fill(colors.WHITE)
-        text = pygame.font.SysFont('comicsansms', 35)
+        text = pygame.font.SysFont('couriernew', 35)
         TextSurf, TextRect = text_objects('How many players (2 min, 8 max)', text, colors.BLACK)
         TextRect.center = (displayWidth/2, displayHeight/2)
         gameDisplay.blit(TextSurf, TextRect)
@@ -852,6 +897,10 @@ def gameLoop():
         barrelChange = 0
         powerChange = 0
         endTurn = False
+        players[turn].updateCurrentSelectedWeapon(1)
+        drawTerrain(652, 1080)
+        drawTanks(players)
+
         while True:
 
             # Control board Player ID
@@ -880,23 +929,23 @@ def gameLoop():
 
                     # Change Weapons
                     elif event.key == pygame.K_1 or event.key == pygame.K_KP1:
-                        players[turn].updateCurrentSelectedWeaponNumberKeys(1)
+                        players[turn].updateCurrentSelectedWeapon(1)
                     elif event.key == pygame.K_2 or event.key == pygame.K_KP1:
-                        players[turn].updateCurrentSelectedWeaponNumberKeys(2)
+                        players[turn].updateCurrentSelectedWeapon(2)
                     elif event.key == pygame.K_3 or event.key == pygame.K_KP3:
-                        players[turn].updateCurrentSelectedWeaponNumberKeys(3)
+                        players[turn].updateCurrentSelectedWeapon(3)
                     elif event.key == pygame.K_4 or event.key == pygame.K_KP4:
-                        players[turn].updateCurrentSelectedWeaponNumberKeys(4)
+                        players[turn].updateCurrentSelectedWeapon(4)
                     elif event.key == pygame.K_5 or event.key == pygame.K_KP5:
-                        players[turn].updateCurrentSelectedWeaponNumberKeys(5)
+                        players[turn].updateCurrentSelectedWeapon(5)
                     elif event.key == pygame.K_6 or event.key == pygame.K_KP6:
-                        players[turn].updateCurrentSelectedWeaponNumberKeys(6)
+                        players[turn].updateCurrentSelectedWeapon(6)
                     elif event.key == pygame.K_7 or event.key == pygame.K_KP7:
-                        players[turn].updateCurrentSelectedWeaponNumberKeys(7)
+                        players[turn].updateCurrentSelectedWeapon(7)
                     elif event.key == pygame.K_8 or event.key == pygame.K_KP8:
-                        players[turn].updateCurrentSelectedWeaponNumberKeys(8)
+                        players[turn].updateCurrentSelectedWeapon(8)
                     elif event.key == pygame.K_9 or event.key == pygame.K_KP9:
-                        players[turn].updateCurrentSelectedWeaponNumberKeys(9)
+                        players[turn].updateCurrentSelectedWeapon(9)
 
                     # Move Tank
                     elif event.key == pygame.K_a:
@@ -928,6 +977,10 @@ def gameLoop():
 
         if len(players) == 1:
             break
+
+        # Cooling weapons
+        for i in range(len(players[turn].weapons)):
+            players[turn].weapons[i].cool()
 
         turn += 1
         if turn >= len(players):
