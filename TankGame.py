@@ -491,7 +491,7 @@ class Shell:
 
     def defineExplosionParameters(self):
         if self.ammoType == 'standard':
-            return (10, 100)
+            return (10, 10)
         elif self.ammoType == 'highexplosive':
             return (30, 30)
         return (0, 0)
@@ -758,9 +758,9 @@ def createInitialTerrain():
             terrain[row][col] = -1
     
 # =========================================
-    for col in range(540, 1080):
-        for row in range(100, mapHeight):
-            terrain[row][col] = -1
+#    for col in range(540, 1080):
+#        for row in range(100, mapHeight):
+#            terrain[row][col] = -1
 # =========================================
 
 def drawTerrain(xstart=0, xstop=1080):
