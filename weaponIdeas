@@ -1,0 +1,21 @@
+EASY:
+Standard: r=10, moderate damage, moderate dropoff
+HE: r = 20, high damage, fast dropoff
+Tunneler: standard shot but less damage, same physics, doesn't stop if hit terrain
+Flamethrower: low damage, but add burn effect, low range, random duration (1-5 turns?)
+Shot with no wind effect: tmpWind = wind, wind = 0, calc as normal, reset wind = tmpWind
+EMP: if hit, add EMP status effect, emp = 0, if effect: emp = rand.ranint(-2, 2), add emp*t to xDisplacementCalculation, duration rand(1, 3) turns
+Freeze: if hit, add freeze status effect, movement for next turn of hit tank = 0, duration rand(1, 3) turns
+Terrain-builder: standard shot, low damage, builds terrain, tank rises
+Heal shot: standard, but deals negative damage
+
+MEDIUM:
+Lightning shot: on hit, check if dist to all other tanks < 200, if so do less damage to that tank, repeat. recursive?
+Pokeball: hit tank is captured. turn-=1 so player can shoot pokeball again. Wherever it lands is where captured tank ends up
+Sniper: gravity = 0 temporarily, doesn't shoot through much terrain, 25 dmg
+
+HARD:
+Spreadshot: 10-20 shells, r = 1 or 2?, low damage, no dropoff
+Airstrike: 25 damage, select area, massive initial cooldown (not ready for a while)
+Tri-shot: 1/3 of standard, shoots in sequence, slight RNG on shells 2 and 3
+Machine gun: 30ish? shells, RNG on each shot, low damage, no dropoff, r= 1 or 2

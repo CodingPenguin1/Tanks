@@ -161,7 +161,7 @@ class TextInput:
         self.font_size = font_size
         self.input_string = "" # Inputted text
         if not os.path.isfile(font_family): font_family = pygame.font.match_font(font_family)
-        self.font_object = pygame.font.Font(font_family, font_size)
+        self.font_object = pygame.font.SysFont('couriernew', font_size)
 
         # Text-surface will be created during the first update call:
         self.surface = pygame.Surface((1, 1))
@@ -191,7 +191,7 @@ class TextInput:
                 if not event.key in self.keyrepeat_counters:
                     self.keyrepeat_counters[event.key] = [0, event.unicode]
 
-                if event.key == pl.K_BACKSPACE: # FIXME: Delete at beginning of line?
+                if event.key == pl.K_BACKSPACE:
                     self.input_string = self.input_string[:max(self.cursor_position - 1, 0)] + \
                                         self.input_string[self.cursor_position:]
 
@@ -276,7 +276,7 @@ class TextInput:
         self.cursor_surface.fill(color)
 
     def clear_text(self):
-        self.input_string=""    
+        self.input_string=""
 
 def unpause():
     global pause
@@ -491,7 +491,7 @@ class Shell:
 
     def defineExplosionParameters(self):
         if self.ammoType == 'standard':
-            return (10, 10)
+            return (10, 100)
         elif self.ammoType == 'highexplosive':
             return (30, 30)
         return (0, 0)
@@ -756,6 +756,12 @@ def createInitialTerrain():
                 break
         for row in range(top, mapHeight):
             terrain[row][col] = -1
+    
+# =========================================
+    for col in range(540, 1080):
+        for row in range(100, mapHeight):
+            terrain[row][col] = -1
+# =========================================
 
 def drawTerrain(xstart=0, xstop=1080):
     global terrain
@@ -1069,11 +1075,9 @@ def TankGame():
     titleTextSize = 115
     buttonTextSize = 30
     print('CWD: ' + os.getcwd())
-    print('This File: ' + os.path.dirname(sys.argv[0]))
-    if operatingSystem == 'Windows':
-        print('Windows detected, changing CWD')
-        os.chdir(os.path.dirname(sys.argv[0]))
-        print('CWD: ' + os.getcwd())
+    print('This File: ' + os.path.dirname(os.path.realpath(__file__)))
+    os.chdir(os.path.dirname(os.path.realpath(__file__)))
+    print('CWD: ' + os.getcwd())
     print()
     play()
 
