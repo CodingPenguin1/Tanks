@@ -161,7 +161,7 @@ class TextInput:
         self.font_size = font_size
         self.input_string = "" # Inputted text
         if not os.path.isfile(font_family): font_family = pygame.font.match_font(font_family)
-        self.font_object = pygame.font.SysFont('couriernew', font_size)
+        self.font_object = pygame.font.Font(font_family, font_size)
 
         # Text-surface will be created during the first update call:
         self.surface = pygame.Surface((1, 1))
@@ -191,7 +191,7 @@ class TextInput:
                 if not event.key in self.keyrepeat_counters:
                     self.keyrepeat_counters[event.key] = [0, event.unicode]
 
-                if event.key == pl.K_BACKSPACE:
+                if event.key == pl.K_BACKSPACE: # FIXME: Delete at beginning of line?
                     self.input_string = self.input_string[:max(self.cursor_position - 1, 0)] + \
                                         self.input_string[self.cursor_position:]
 
@@ -276,7 +276,7 @@ class TextInput:
         self.cursor_surface.fill(color)
 
     def clear_text(self):
-        self.input_string=""
+        self.input_string=""    
 
 def unpause():
     global pause
