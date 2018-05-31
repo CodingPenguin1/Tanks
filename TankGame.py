@@ -379,20 +379,71 @@ class player:
         self.power = 50
         self.tankHealth = 100
 
+    def move(self, movement):
+        if self.movementLeft == 0:
+            return False
+        validMove = True
+        moveToCol = self.tankLoc[0] + movement
+        if movement > 0:
+            moveToCol += 50
+        if moveToCol < 0 or moveToCol > 1080:
+            return False
+        for i in range(mapHeight):
+            if terrain[i][moveToCol] > 0 and terrain[i][moveToCol] != self.idnum:
+                validMove = False
+                break
+
+        if validMove:
+            x = self.tankLoc[0] + movement
+
+            maxy = mapHeight
+            for col in range(x+9, x+43):
+                for row in range(maxy):
+                    if terrain[row][col] == -1:
+                        maxy = row
+                        break
+
+            if (self.tankLoc[1]+34) - maxy > 25:
+                print('Too steep')
+                return False
+            elif maxy - (self.tankLoc[1]+34) > 25:
+                self.updateHealth( -(abs(self.tankLoc[1]+34-maxy))**(1/2) )
+                print('Fall: ' + str(abs(self.tankLoc[1]+34-maxy)))
+                print('Dmg: ' + str((abs(self.tankLoc[1]+34-maxy))**(1/2)))
+
+            # Remove old tank terrain array data
+            for row in range(self.tankLoc[1], self.tankLoc[1]+34):
+                for col in range(self.tankLoc[0], self.tankLoc[0]+50):
+                    if terrain[row][col] == self.idnum:
+                        terrain[row][col] = 0
+
+            self.updateTankLoc((x, maxy-34))
+
+            # Add to terrain array
+            for col in range(x, x+50):
+                for row in range(maxy-34, maxy):
+                    if row >= 0  and row < 670 and col >= 0 and col < 1080:
+                        if terrain[row][col] == 0:
+                            terrain[row][col] = self.idnum
+
+            drawTerrain(self.tankLoc[0]-10, self.tankLoc[0]+60)
+            drawTanks(players)
+        return validMove
+
     def updateTankLoc(self, loc):
         self.tankLoc = loc
 
     def shoot(self):
         print('\n' + self.name + ' shooting')
-        self.currentWeapon.shoot(self.power, math.radians(-1*(self.barrelAngle-90)), self.tankLoc)
+        self.currentWeapon.shoot(self.power, math.radians(-1*(self.barrelAngle-90)), self.tankLoc, self.idnum)
         self.currentWeapon.resetCooldown()
 
     def moveBarrel(self, amount):
         self.barrelAngle += amount
-        if self.barrelAngle < -110:
-            self.barrelAngle = -110
-        elif self.barrelAngle > 110:
-            self.barrelAngle = 110
+        if self.barrelAngle < -90:
+            self.barrelAngle = -90
+        elif self.barrelAngle > 90:
+            self.barrelAngle = 90
 
     def updateSelectedWeaponArrowKeys(self, direction):
         currentSelection = 0
@@ -465,8 +516,8 @@ class weapon:
             weaponsDir = 'weapons\\'
         self.image = pygame.image.load(weaponsDir + self.name + 'weapon.png')
 
-    def shoot(self, power, angle, initialLocation):
-        hit = self.shell.shoot(power, angle, (initialLocation[0]+25, initialLocation[1]+7))
+    def shoot(self, power, angle, initialLocation, idnum):
+        hit = self.shell.shoot(power, angle, (initialLocation[0]+25, initialLocation[1]+7), idnum)
         return hit
 
     def cool(self):
@@ -502,7 +553,7 @@ class Shell:
         elif self.ammoType == 'highexplosive':
             return (-1/45)*distance**2 + 20
 
-    def shoot(self, power, angle, initialLoc):
+    def shoot(self, power, angle, initialLoc, idnum):
         hit = False
         self.xLocation = initialLoc[0]
         self.yLocation = initialLoc[1]
@@ -531,7 +582,7 @@ class Shell:
 
         # Remove points that overlap shooting tank
         while True:
-            if terrain[self.yLocation-y[0]-1][self.xLocation+x[0]-1] != 0:
+            if terrain[self.yLocation-y[0]-1][self.xLocation+x[0]-1] == idnum:
                 x.pop(0)
                 y.pop(0)
                 xNoWind.pop(0)
@@ -638,6 +689,12 @@ class Status:
 
 def gravityUpdate():
     def setTank(player, x):
+
+        # Remove old tank terrain array data
+        for row in range(player.tankLoc[1], player.tankLoc[1]+34):
+            for col in range(player.tankLoc[0], player.tankLoc[0]+50):
+                terrain[row][col] = 0
+
         maxy = mapHeight
         for col in range(x+9, x+43):
             for row in range(maxy):
@@ -738,13 +795,14 @@ def createInitialTerrain():
     # getRandomFunction implemented into terrain array
     for col in range(displayWidth):
         # Sine function terrain
-#        row = mapHeight - 200 + int(25*math.sin(col/50))
+        row = mapHeight - 200 + int(25*math.sin(col/50))
 
         # Flat terrain
-        row = mapHeight - 100
+#        row = mapHeight - 100
 
         # Jagged random terrain
 #        row = mapHeight - rand.randint(0, int(mapHeight*(2/3))) - 1
+
         terrain[row][col] = -1
 
     # fill everything under function
@@ -756,11 +814,11 @@ def createInitialTerrain():
                 break
         for row in range(top, mapHeight):
             terrain[row][col] = -1
-    
-# =========================================
-#    for col in range(540, 1080):
-#        for row in range(100, mapHeight):
-#            terrain[row][col] = -1
+
+# ============ Make Cliff =================
+    for col in range(540, 1080):
+        for row in range(100, mapHeight):
+            terrain[row][col] = -1
 # =========================================
 
 def drawTerrain(xstart=0, xstop=1080):
@@ -775,7 +833,7 @@ def drawTerrain(xstart=0, xstop=1080):
         xstop = 1080
     for col in range(xstart, xstop):
         pygame.draw.rect(gameDisplay, colors.SKY, (col, 0, 1, mapHeight))
-    pygame.draw.rect(gameDisplay, colors.CONTROLBOARDBACKGROUND, (0, mapHeight, displayWidth, displayHeight))
+#    pygame.draw.rect(gameDisplay, colors.CONTROLBOARDBACKGROUND, (0, mapHeight, displayWidth, displayHeight))
     for col in range(xstart, xstop):
         for row in range(mapHeight):
             if terrain[row][col] == -1:
@@ -788,6 +846,12 @@ def drawControlBoard(player):
     # Player Name
     TextSurf, TextRect = text_objects(player.name, text, player.RGBColor)
     TextRect.center = (80, 695)
+    gameDisplay.blit(TextSurf, TextRect)
+
+    # Movement
+    fuelPercent = int(100*player.movementLeft/player.movementPerTurn)
+    TextSurf, TextRect = text_objects('Fuel: ' + str(fuelPercent) + '%', pygame.font.SysFont('couriernew', 15), colors.BLACK)
+    TextRect.center = (310, 685)
     gameDisplay.blit(TextSurf, TextRect)
 
     # Wind
@@ -819,11 +883,13 @@ def drawControlBoard(player):
     if operatingSystem == 'Windows':
         weaponsDir = 'weapons\\'
 
+    smallText = pygame.font.SysFont('couriernew', 15)
     for i in range(len(player.weapons)):
         gameDisplay.blit(player.weapons[i].image, (630+i*45, 675))
-        TextSurf, TextRect = text_objects(str(player.weapons[i].timeUntilAvailable), text, player.RGBColor)
-        TextRect.center = (652+i*45, 650)
-        gameDisplay.blit(TextSurf, TextRect)
+        if player.weapons[i].timeUntilAvailable != 0:
+            TextSurf, TextRect = text_objects(str(player.weapons[i].timeUntilAvailable), smallText, player.RGBColor)
+            TextRect.center = (638+i*45, 682)
+            gameDisplay.blit(TextSurf, TextRect)
 
     currentSelection = 0
     for i in range(len(player.weapons)):
@@ -902,7 +968,9 @@ def gameLoop():
     while True:
         barrelChange = 0
         powerChange = 0
+        movement = 0
         endTurn = False
+        players[turn].movementLeft = players[turn].movementPerTurn
         players[turn].updateCurrentSelectedWeapon(1)
         drawTerrain(652, 1080)
         drawTanks(players)
@@ -920,6 +988,12 @@ def gameLoop():
                     if event.key == pygame.K_ESCAPE or event.key == pygame.K_p:
                         pause = True
                         paused()
+
+                    # Movement
+                    elif event.key == pygame.K_d:
+                        movement = 5
+                    elif event.key == pygame.K_a:
+                        movement = -5
 
                     # Rotate Barrel
                     elif event.key ==  pygame.K_LEFT:
@@ -971,12 +1045,17 @@ def gameLoop():
                         barrelChange = 0
                     elif event.key == pygame.K_UP or event.key == pygame.K_DOWN:
                         powerChange = 0
+                    elif event.key == pygame.K_d or event.key == pygame.K_a:
+                        movement = 0
 
             if endTurn:
                 break
 
             players[turn].moveBarrel(barrelChange)
             players[turn].changePower(powerChange)
+            if movement != 0:
+                if players[turn].move(movement):
+                    players[turn].movementLeft -= 5
 
             pygame.display.update()
             clock.tick(30)
